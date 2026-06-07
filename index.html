@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LocaleForge MVP</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="icon-globe" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M3 12h18"></path>
+        <path d="M12 3a14 14 0 0 1 0 18"></path>
+        <path d="M12 3a14 14 0 0 0 0 18"></path>
+      </symbol>
+      <symbol id="icon-upload" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <path d="M17 8l-5-5-5 5"></path>
+        <path d="M12 3v12"></path>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="M5 5a2 2 0 0 1 3-1.73l11 6.35a2 2 0 0 1 0 3.46L8 19.43A2 2 0 0 1 5 17.7z"></path>
+      </symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <path d="M7 10l5 5 5-5"></path>
+        <path d="M12 15V3"></path>
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"></path>
+        <path d="M3 21v-5h5"></path>
+        <path d="M3 12A9 9 0 0 1 18.5 5.8L21 8"></path>
+        <path d="M21 3v5h-5"></path>
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M3 6h18"></path>
+        <path d="M8 6V4h8v2"></path>
+        <path d="M19 6l-1 14H6L5 6"></path>
+        <path d="M10 11v5"></path>
+        <path d="M14 11v5"></path>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="M20 6L9 17l-5-5"></path>
+      </symbol>
+      <symbol id="icon-alert" viewBox="0 0 24 24">
+        <path d="M10.3 3.7 2.5 18a2 2 0 0 0 1.8 3h15.4a2 2 0 0 0 1.8-3L13.7 3.7a2 2 0 0 0-3.4 0z"></path>
+        <path d="M12 9v4"></path>
+        <path d="M12 17h.01"></path>
+      </symbol>
+      <symbol id="icon-code" viewBox="0 0 24 24">
+        <path d="m16 18 6-6-6-6"></path>
+        <path d="m8 6-6 6 6 6"></path>
+      </symbol>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Workspace">
+        <div class="brand">
+          <span class="brand-mark"><svg><use href="#icon-globe"></use></svg></span>
+          <span>
+            <strong>LocaleForge</strong>
+            <small>MVP scanner</small>
+          </span>
+        </div>
+
+        <nav class="rail-nav" aria-label="Primary">
+          <a href="#overview" class="rail-link active">Overview</a>
+          <a href="#locales" class="rail-link">Locales</a>
+          <a href="#reports" class="rail-link">Reports</a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span class="status-dot"></span>
+          <span id="autosaveStatus">Ready</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Translation quality gate</p>
+            <h1>Forge reliable translations before they reach production.</h1>
+          </div>
+          <div class="topbar-actions">
+            <button class="button secondary" type="button" id="resetSampleButton">
+              <svg><use href="#icon-refresh"></use></svg>
+              Reset
+            </button>
+            <button class="button secondary" type="button" id="exportButton">
+              <svg><use href="#icon-download"></use></svg>
+              Export
+            </button>
+            <button class="button primary" type="button" id="analyzeButton">
+              <svg><use href="#icon-play"></use></svg>
+              Analyze
+            </button>
+          </div>
+        </header>
+
+        <section class="summary-grid" id="overview" aria-label="Scan summary">
+          <article class="metric">
+            <span class="metric-label">Locales</span>
+            <strong id="metricLocales">0</strong>
+            <small id="metricSource">Source: en</small>
+          </article>
+          <article class="metric">
+            <span class="metric-label">Key paths</span>
+            <strong id="metricKeys">0</strong>
+            <small id="metricDepth">Nested JSON</small>
+          </article>
+          <article class="metric danger">
+            <span class="metric-label">Missing</span>
+            <strong id="metricMissing">0</strong>
+            <small>blocking issues</small>
+          </article>
+          <article class="metric warning">
+            <span class="metric-label">Unused</span>
+            <strong id="metricUnused">0</strong>
+            <small>source locale</small>
+          </article>
+          <article class="metric">
+            <span class="metric-label">Complete</span>
+            <strong id="metricComplete">0%</strong>
+            <small>average</small>
+          </article>
+        </section>
+
+        <div class="workspace-grid">
+          <section class="panel" id="locales">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Locale inputs</p>
+                <h2>Files</h2>
+              </div>
+              <label class="icon-button" title="Upload JSON locale files">
+                <input id="localeFileInput" type="file" accept=".json,application/json" multiple />
+                <svg><use href="#icon-upload"></use></svg>
+              </label>
+            </div>
+
+            <div class="field-row">
+              <label class="field">
+                <span>Source locale</span>
+                <select id="sourceLocaleSelect"></select>
+              </label>
+              <label class="field">
+                <span>Locale code</span>
+                <input id="localeCodeInput" type="text" value="fr" maxlength="12" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Locale JSON</span>
+              <textarea id="localeJsonInput" spellcheck="false">{
+  "login": {
+    "title": "Bienvenue",
+    "button": "Connexion"
+  }
+}</textarea>
+            </label>
+
+            <div class="button-row">
+              <button class="button secondary" type="button" id="addLocaleButton">
+                <svg><use href="#icon-check"></use></svg>
+                Add locale
+              </button>
+            </div>
+
+            <div class="locale-list" id="localeList" aria-label="Loaded locales"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Reference scan</p>
+                <h2>Application source</h2>
+              </div>
+              <label class="icon-button" title="Upload source files">
+                <input id="sourceFileInput" type="file" multiple />
+                <svg><use href="#icon-code"></use></svg>
+              </label>
+            </div>
+
+            <label class="field source-field">
+              <span>Source references</span>
+              <textarea id="sourceInput" spellcheck="false"></textarea>
+            </label>
+
+            <div class="button-row">
+              <button class="button secondary" type="button" id="loadSampleReferencesButton">
+                <svg><use href="#icon-refresh"></use></svg>
+                Sample source
+              </button>
+              <button class="button ghost" type="button" id="clearReferencesButton">Clear</button>
+            </div>
+
+            <div class="reference-stats" id="referenceStats"></div>
+          </section>
+        </div>
+
+        <section class="report-shell" id="reports">
+          <div class="report-top">
+            <div>
+              <p class="eyebrow">Validation report</p>
+              <h2 id="reportTitle">Issues</h2>
+            </div>
+            <div class="tabs" role="tablist" aria-label="Report type">
+              <button class="tab active" role="tab" type="button" data-tab="missing">Missing</button>
+              <button class="tab" role="tab" type="button" data-tab="structure">Structure</button>
+              <button class="tab" role="tab" type="button" data-tab="unused">Unused</button>
+            </div>
+          </div>
+          <div id="reportContent" class="report-content"></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
