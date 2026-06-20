@@ -79,40 +79,40 @@ formatMessage({ id: "settings.timezone" });`;
 
 const PHRASEBOOK = {
   id: {
-    "Welcome": "Selamat Datang",
+    Welcome: "Selamat Datang",
     "Sign in to continue": "Masuk untuk melanjutkan",
-    "Login": "Masuk",
+    Login: "Masuk",
     "Good morning": "Selamat pagi",
-    "Users": "Pengguna",
-    "Revenue": "Pendapatan",
-    "Language": "Bahasa",
-    "Timezone": "Zona waktu",
-    "Billing": "Penagihan",
-    "Invoices": "Faktur",
+    Users: "Pengguna",
+    Revenue: "Pendapatan",
+    Language: "Bahasa",
+    Timezone: "Zona waktu",
+    Billing: "Penagihan",
+    Invoices: "Faktur",
   },
   es: {
-    "Welcome": "Bienvenido",
+    Welcome: "Bienvenido",
     "Sign in to continue": "Inicia sesion para continuar",
-    "Login": "Iniciar sesion",
+    Login: "Iniciar sesion",
     "Good morning": "Buenos dias",
-    "Users": "Usuarios",
-    "Revenue": "Ingresos",
-    "Language": "Idioma",
-    "Timezone": "Zona horaria",
-    "Billing": "Facturacion",
-    "Invoices": "Facturas",
+    Users: "Usuarios",
+    Revenue: "Ingresos",
+    Language: "Idioma",
+    Timezone: "Zona horaria",
+    Billing: "Facturacion",
+    Invoices: "Facturas",
   },
   fr: {
-    "Welcome": "Bienvenue",
+    Welcome: "Bienvenue",
     "Sign in to continue": "Connectez-vous pour continuer",
-    "Login": "Connexion",
+    Login: "Connexion",
     "Good morning": "Bonjour",
-    "Users": "Utilisateurs",
-    "Revenue": "Revenu",
-    "Language": "Langue",
-    "Timezone": "Fuseau horaire",
-    "Billing": "Facturation",
-    "Invoices": "Factures",
+    Users: "Utilisateurs",
+    Revenue: "Revenu",
+    Language: "Langue",
+    Timezone: "Fuseau horaire",
+    Billing: "Facturation",
+    Invoices: "Factures",
   },
 };
 
@@ -132,12 +132,15 @@ const elements = {
   metricDepth: document.querySelector("#metricDepth"),
   metricMissing: document.querySelector("#metricMissing"),
   metricUnused: document.querySelector("#metricUnused"),
+  metricReferences: document.querySelector("#metricReferences"),
+  metricExtras: document.querySelector("#metricExtras"),
   metricComplete: document.querySelector("#metricComplete"),
   sourceLocaleSelect: document.querySelector("#sourceLocaleSelect"),
   localeCodeInput: document.querySelector("#localeCodeInput"),
   localeJsonInput: document.querySelector("#localeJsonInput"),
   sourceInput: document.querySelector("#sourceInput"),
   localeList: document.querySelector("#localeList"),
+  fillMissingButton: document.querySelector("#fillMissingButton"),
   referenceStats: document.querySelector("#referenceStats"),
   reportTitle: document.querySelector("#reportTitle"),
   reportContent: document.querySelector("#reportContent"),
@@ -156,7 +159,8 @@ function loadState() {
     const parsed = JSON.parse(cached);
     if (!parsed.locales || typeof parsed.locales !== "object") return;
     state.locales = parsed.locales;
-    state.sourceLocale = parsed.sourceLocale || Object.keys(parsed.locales)[0] || "en";
+    state.sourceLocale =
+      parsed.sourceLocale || Object.keys(parsed.locales)[0] || "en";
     state.references = parsed.references || "";
   } catch {
     localStorage.removeItem(STORAGE_KEY);
@@ -215,7 +219,9 @@ function maxDepth(keys) {
 }
 
 function sortKeys(keys) {
-  return [...keys].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  return [...keys].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" }),
+  );
 }
 
 function firstValueForKey(key, leavesByLocale) {
@@ -238,6 +244,63 @@ function suggestTranslation(locale, sourceValue) {
   if (direct) return direct;
   if (!text || text === "{}") return "";
   return `${text} [${locale}]`;
+}
+
+function setNestedValue(object, path, value) {
+  const segments = path.split(".");
+  let current = object;
+
+  for (let i = 0; i < segments.length - 1; i += 1) {
+    const segment = segments[i];
+    if (!isObject(current[segment])) current[segment] = {};
+    current = current[segment];
+  }
+
+  current[segments[segments.length - 1]] = value;
+}
+
+function fillMissingTranslations() {
+  if (!state.analysis) {
+    showToast("Run analysis first.");
+    return;
+  }
+
+  const missingIssues = state.analysis.missing;
+  if (!missingIssues.length) {
+    showToast("No missing translations to fill.");
+    return;
+  }
+
+  for (const issue of missingIssues) {
+    const localeData = state.locales[issue.locale];
+    if (!localeData) continue;
+
+    const value = issue.suggestion || issue.sourceValue;
+    setNestedValue(localeData, issue.key, value);
+  }
+
+  saveState();
+  render();
+  showToast("Missing translations auto-filled.");
+}
+
+function downloadLocale(locale) {
+  const content = state.locales[locale];
+  if (!content) {
+    showToast(`Locale ${locale} not found.`);
+    return;
+  }
+
+  const blob = new Blob([JSON.stringify(content, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${locale}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+  showToast(`${locale}.json downloaded.`);
 }
 
 function extractReferences(sourceText) {
@@ -269,12 +332,23 @@ function analyzeLocales() {
     typesByLocale[locale] = collectTypes(state.locales[locale]);
   }
 
-  const allKeys = sortKeys(new Set(localeCodes.flatMap((locale) => Object.keys(leavesByLocale[locale]))));
-  const allPaths = sortKeys(new Set(localeCodes.flatMap((locale) => Object.keys(typesByLocale[locale]))));
+  const allKeys = sortKeys(
+    new Set(
+      localeCodes.flatMap((locale) => Object.keys(leavesByLocale[locale])),
+    ),
+  );
+  const allPaths = sortKeys(
+    new Set(
+      localeCodes.flatMap((locale) => Object.keys(typesByLocale[locale])),
+    ),
+  );
   const sourceLeaves = leavesByLocale[state.sourceLocale] || {};
-  const references = extractReferences(state.references);
+  const { references, counts: referenceCounts } = extractReferences(
+    state.references,
+  );
   const missing = [];
   const structure = [];
+  const extras = [];
 
   for (const locale of localeCodes) {
     for (const key of allKeys) {
@@ -304,31 +378,54 @@ function analyzeLocales() {
     if (uniqueTypes.size > 1) {
       structure.push({
         path,
-        expected: typesByLocale[state.sourceLocale][path] || [...uniqueTypes][0],
+        expected:
+          typesByLocale[state.sourceLocale][path] || [...uniqueTypes][0],
         locales: presentTypes,
       });
+    }
+  }
+
+  for (const locale of localeCodes) {
+    if (locale === state.sourceLocale) continue;
+    for (const key of Object.keys(leavesByLocale[locale])) {
+      if (!Object.prototype.hasOwnProperty.call(sourceLeaves, key)) {
+        extras.push({ locale, key });
+      }
     }
   }
 
   const unused =
     references.size === 0
       ? []
-      : sortKeys(Object.keys(sourceLeaves)).filter((key) => !references.has(key)).map((key) => ({
-          locale: state.sourceLocale,
-          key,
-          value: sourceLeaves[key],
-        }));
+      : sortKeys(Object.keys(sourceLeaves))
+          .filter((key) => !references.has(key))
+          .map((key) => ({
+            locale: state.sourceLocale,
+            key,
+            value: sourceLeaves[key],
+          }));
+
+  const referenceCountsMap = referenceCounts;
+  const topReferences = sortKeys(Object.keys(referenceCountsMap))
+    .sort((a, b) => referenceCountsMap[b] - referenceCountsMap[a])
+    .slice(0, 5)
+    .map((key) => ({ key, count: referenceCountsMap[key] }));
 
   const completeness = {};
   for (const locale of localeCodes) {
     const translated = allKeys.filter((key) =>
       Object.prototype.hasOwnProperty.call(leavesByLocale[locale], key),
     ).length;
-    completeness[locale] = allKeys.length ? Math.round((translated / allKeys.length) * 100) : 100;
+    completeness[locale] = allKeys.length
+      ? Math.round((translated / allKeys.length) * 100)
+      : 100;
   }
 
   const averageComplete = localeCodes.length
-    ? Math.round(localeCodes.reduce((sum, locale) => sum + completeness[locale], 0) / localeCodes.length)
+    ? Math.round(
+        localeCodes.reduce((sum, locale) => sum + completeness[locale], 0) /
+          localeCodes.length,
+      )
     : 0;
 
   return {
@@ -341,6 +438,10 @@ function analyzeLocales() {
     structure,
     unused,
     references,
+    referenceCounts: referenceCountsMap,
+    topReferences,
+    extras,
+    extraCount: extras.length,
     completeness,
     averageComplete,
     depth: maxDepth(allKeys),
@@ -373,6 +474,8 @@ function renderSummary() {
   elements.metricDepth.textContent = `Depth: ${analysis.depth}`;
   elements.metricMissing.textContent = analysis.missing.length;
   elements.metricUnused.textContent = analysis.unused.length;
+  elements.metricReferences.textContent = analysis.references.size;
+  elements.metricExtras.textContent = analysis.extraCount;
   elements.metricComplete.textContent = `${analysis.averageComplete}%`;
 }
 
@@ -390,7 +493,9 @@ function renderLocaleControls() {
   elements.localeList.innerHTML = analysis.localeCodes
     .map((locale) => {
       const keyCount = Object.keys(analysis.leavesByLocale[locale]).length;
-      const missingCount = analysis.missing.filter((issue) => issue.locale === locale).length;
+      const missingCount = analysis.missing.filter(
+        (issue) => issue.locale === locale,
+      ).length;
       const complete = analysis.completeness[locale];
       const statusClass = missingCount ? "danger-dot" : "ok-dot";
       const removeDisabled = analysis.localeCodes.length <= 1 ? "disabled" : "";
@@ -410,6 +515,11 @@ function renderLocaleControls() {
             )}" data-action="load-locale" data-locale="${escapeHtml(locale)}">
               <svg><use href="#icon-code"></use></svg>
             </button>
+            <button class="tiny-button" type="button" title="Download ${escapeHtml(
+              locale,
+            )} locale" data-action="download-locale" data-locale="${escapeHtml(locale)}">
+              <svg><use href="#icon-download"></use></svg>
+            </button>
             <button class="tiny-button" type="button" title="Remove ${escapeHtml(
               locale,
             )}" data-action="remove-locale" data-locale="${escapeHtml(locale)}" ${removeDisabled}>
@@ -425,33 +535,49 @@ function renderLocaleControls() {
 function renderReferences() {
   const analysis = state.analysis;
   elements.sourceInput.value = state.references;
-  elements.referenceStats.innerHTML = [
-    ["Referenced", analysis.references.size],
-    ["Source keys", Object.keys(analysis.leavesByLocale[state.sourceLocale] || {}).length],
-    ["Unused", analysis.unused.length],
-  ]
-    .map(
-      ([label, value]) => `
+  const sourceKeyCount = Object.keys(
+    analysis.leavesByLocale[state.sourceLocale] || {},
+  ).length;
+  const occurrenceCount = Object.values(analysis.referenceCounts).reduce(
+    (sum, value) => sum + value,
+    0,
+  );
+  const topReferencesMarkup = analysis.topReferences.length
+    ? `<div class="reference-top">
+         <strong>Top references</strong>
+         ${analysis.topReferences
+           .map(
+             (entry) =>
+               `<code>${escapeHtml(entry.key)} (${entry.count})</code>`,
+           )
+           .join("")}
+       </div>`
+    : "";
+
+  elements.referenceStats.innerHTML =
+    [
+      ["Referenced", analysis.references.size],
+      ["Occurrences", occurrenceCount],
+      ["Source keys", sourceKeyCount],
+      ["Unused", analysis.unused.length],
+      ["Extra", analysis.extraCount],
+    ]
+      .map(
+        ([label, value]) => `
         <div class="reference-stat">
           <strong>${value}</strong>
           <span>${label}</span>
         </div>
       `,
-    )
-    .join("");
-}
-
-function renderReport() {
-  const titles = {
-    missing: "Missing translations",
-    structure: "Schema mismatches",
-    unused: "Unused keys",
-  };
-  elements.reportTitle.textContent = titles[state.activeTab];
+      )
+      .join("") + topReferencesMarkup;
 
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.classList.toggle("active", tab.dataset.tab === state.activeTab);
-    tab.setAttribute("aria-selected", String(tab.dataset.tab === state.activeTab));
+    tab.setAttribute(
+      "aria-selected",
+      String(tab.dataset.tab === state.activeTab),
+    );
   });
 
   if (state.activeTab === "missing") renderMissingReport();
@@ -474,7 +600,10 @@ function emptyState(title, detail) {
 function renderMissingReport() {
   const issues = state.analysis.missing;
   if (!issues.length) {
-    elements.reportContent.innerHTML = emptyState("No missing keys", "Every locale contains the same leaf paths.");
+    elements.reportContent.innerHTML = emptyState(
+      "No missing keys",
+      "Every locale contains the same leaf paths.",
+    );
     return;
   }
 
@@ -507,7 +636,10 @@ function renderMissingReport() {
 function renderStructureReport() {
   const issues = state.analysis.structure;
   if (!issues.length) {
-    elements.reportContent.innerHTML = emptyState("Schemas match", "Locale files share compatible nested structures.");
+    elements.reportContent.innerHTML = emptyState(
+      "Schemas match",
+      "Locale files share compatible nested structures.",
+    );
     return;
   }
 
@@ -526,7 +658,10 @@ function renderStructureReport() {
               <div class="suggestion">
                 <strong>Observed types</strong>
                 ${issue.locales
-                  .map((entry) => `<code>${escapeHtml(entry.locale)}: ${escapeHtml(entry.type)}</code>`)
+                  .map(
+                    (entry) =>
+                      `<code>${escapeHtml(entry.locale)}: ${escapeHtml(entry.type)}</code>`,
+                  )
                   .join(" ")}
               </div>
             </article>
@@ -540,12 +675,18 @@ function renderStructureReport() {
 function renderUnusedReport() {
   const issues = state.analysis.unused;
   if (!state.references.trim()) {
-    elements.reportContent.innerHTML = emptyState("No source references", "Upload or paste application source to scan usage.");
+    elements.reportContent.innerHTML = emptyState(
+      "No source references",
+      "Upload or paste application source to scan usage.",
+    );
     return;
   }
 
   if (!issues.length) {
-    elements.reportContent.innerHTML = emptyState("No unused keys", "Every source-locale key appears in application references.");
+    elements.reportContent.innerHTML = emptyState(
+      "No unused keys",
+      "Every source-locale key appears in application references.",
+    );
     return;
   }
 
@@ -602,7 +743,8 @@ function addLocaleFromEditor() {
     }
 
     state.locales[code] = parsed;
-    if (!state.sourceLocale || !state.locales[state.sourceLocale]) state.sourceLocale = code;
+    if (!state.sourceLocale || !state.locales[state.sourceLocale])
+      state.sourceLocale = code;
     saveState();
     render();
     showToast(`${code} locale added.`);
@@ -636,7 +778,9 @@ function exportReport() {
     structure: state.analysis.structure,
     unused: state.analysis.unused,
   };
-  const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(report, null, 2)], {
+    type: "application/json",
+  });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -679,7 +823,11 @@ async function handleLocaleUpload(event) {
   saveState();
   render();
   event.target.value = "";
-  showToast(failures.length ? failures.join(" | ") : `${files.length} locale file(s) loaded.`);
+  showToast(
+    failures.length
+      ? failures.join(" | ")
+      : `${files.length} locale file(s) loaded.`,
+  );
 }
 
 async function handleSourceUpload(event) {
@@ -707,11 +855,22 @@ function bindEvents() {
     showToast("Scan complete.");
   });
 
-  document.querySelector("#exportButton").addEventListener("click", exportReport);
-  document.querySelector("#resetSampleButton").addEventListener("click", resetSample);
-  document.querySelector("#addLocaleButton").addEventListener("click", addLocaleFromEditor);
-  document.querySelector("#localeFileInput").addEventListener("change", handleLocaleUpload);
-  document.querySelector("#sourceFileInput").addEventListener("change", handleSourceUpload);
+  document
+    .querySelector("#exportButton")
+    .addEventListener("click", exportReport);
+  elements.fillMissingButton.addEventListener("click", fillMissingTranslations);
+  document
+    .querySelector("#resetSampleButton")
+    .addEventListener("click", resetSample);
+  document
+    .querySelector("#addLocaleButton")
+    .addEventListener("click", addLocaleFromEditor);
+  document
+    .querySelector("#localeFileInput")
+    .addEventListener("change", handleLocaleUpload);
+  document
+    .querySelector("#sourceFileInput")
+    .addEventListener("change", handleSourceUpload);
 
   elements.sourceLocaleSelect.addEventListener("change", (event) => {
     state.sourceLocale = event.target.value;
@@ -724,18 +883,22 @@ function bindEvents() {
     elements.autosaveStatus.textContent = "Editing";
   });
 
-  document.querySelector("#loadSampleReferencesButton").addEventListener("click", () => {
-    state.references = SAMPLE_REFERENCES;
-    saveState();
-    render();
-    showToast("Sample source loaded.");
-  });
+  document
+    .querySelector("#loadSampleReferencesButton")
+    .addEventListener("click", () => {
+      state.references = SAMPLE_REFERENCES;
+      saveState();
+      render();
+      showToast("Sample source loaded.");
+    });
 
-  document.querySelector("#clearReferencesButton").addEventListener("click", () => {
-    state.references = "";
-    saveState();
-    render();
-  });
+  document
+    .querySelector("#clearReferencesButton")
+    .addEventListener("click", () => {
+      state.references = "";
+      saveState();
+      render();
+    });
 
   document.querySelector(".tabs").addEventListener("click", (event) => {
     const tab = event.target.closest(".tab");
@@ -751,8 +914,17 @@ function bindEvents() {
 
     if (button.dataset.action === "load-locale") {
       elements.localeCodeInput.value = locale;
-      elements.localeJsonInput.value = JSON.stringify(state.locales[locale], null, 2);
+      elements.localeJsonInput.value = JSON.stringify(
+        state.locales[locale],
+        null,
+        2,
+      );
       elements.localeJsonInput.focus();
+    }
+
+    if (button.dataset.action === "download-locale") {
+      downloadLocale(locale);
+      return;
     }
 
     if (button.dataset.action === "remove-locale") {

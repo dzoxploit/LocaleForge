@@ -87,6 +87,10 @@
               <svg><use href="#icon-refresh"></use></svg>
               Reset
             </button>
+            <button class="button secondary" type="button" id="fillMissingButton">
+              <svg><use href="#icon-check"></use></svg>
+              Auto-fill
+            </button>
             <button class="button secondary" type="button" id="exportButton">
               <svg><use href="#icon-download"></use></svg>
               Export
@@ -109,10 +113,20 @@
             <strong id="metricKeys">0</strong>
             <small id="metricDepth">Nested JSON</small>
           </article>
+          <article class="metric">
+            <span class="metric-label">References</span>
+            <strong id="metricReferences">0</strong>
+            <small>source usage</small>
+          </article>
           <article class="metric danger">
             <span class="metric-label">Missing</span>
             <strong id="metricMissing">0</strong>
             <small>blocking issues</small>
+          </article>
+          <article class="metric warning">
+            <span class="metric-label">Extra keys</span>
+            <strong id="metricExtras">0</strong>
+            <small>unexpected paths</small>
           </article>
           <article class="metric warning">
             <span class="metric-label">Unused</span>
